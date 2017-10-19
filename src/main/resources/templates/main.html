@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:v-bind="http://www.w3.org/1999/xhtml" xmlns:v-on="http://www.w3.org/1999/xhtml">
+<head>
+	<meta charset="UTF-8"/>
+	<title>RSS Feed Reader</title>
+	<link rel="stylesheet" href="/css/bootstrap.min.css"/>
+</head>
+<body>
+<nav class="navbar navbar-inverse navbar-fixed-top">
+	<div class="container">
+		<div class="navbar-header">
+			<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+				<span class="sr-only">Toggle navigation</span>
+				<span class="icon-bar"></span>
+				<span class="icon-bar"></span>
+				<span class="icon-bar"></span>
+			</button>
+			<a class="navbar-brand" href="#">RSS Feed Reader</a>
+		</div>
+		<div id="navbar" class="navbar-collapse collapse">
+			<form id="feedForm" class="navbar-form navbar-right">
+				<div class="form-group">
+					<input type="text" id="feedAddress" placeholder="RSSフィードのアドレス" class="form-control" required="required"/>
+				</div>
+				<button type="submit" class="btn btn-success">Read!</button>
+			</form>
+		</div>
+	</div>
+</nav>
+<div class="container" style="padding: 60px 0;">
+	<div role="tabpanel" id="feedList">
+		<ul class="nav nav-tabs" role="tablist">
+			<li role="presentation" v-for="(feedEntry, index) in list">
+				<a v-bind:href="'#entry' + index" v-bind:aria-controls="'entry' + index" role="tab" data-toggle="tab">{{feedEntry.title}}</a>
+			</li>
+		</ul>
+
+		<div class="tab-content" style="padding-top: 12px;">
+			<div role="tabpanel" v-for="(feedEntry, index) in list" class="tab-pane" v-bind:id="'entry' + index">
+
+				<nav class="navbar navbar-default">
+					<div class="container-fluid">
+						<form id="exchangeForm" class="navbar-form navbar-left">
+							<div class="input-group">
+								<input type="text" id="as-is-word" class="form-control"/>
+								<div class="input-group-btn">
+									<button class="btn btn-default dropdown-toggle" id="actionBtn" data-toggle="dropdown" aria-expanded="false">
+										<span>取り除き</span>
+										<span class="caret"></span>
+									</button>
+									<ul class="dropdown-menu dropdown-menu-right" role="menu">
+										<li><a href="javascript:void(0)" v-on:click="selectAct(1)">取り除き</a></li>
+										<li><a href="javascript:void(0)" v-on:click="selectAct(2)">変換</a></li>
+									</ul>
+								</div>
+							</div>
+							<div class="input-group">
+								<input type="text" id="to-be-word" class="form-control" style="display:none;"/>
+								<input type="hidden" id="actionType" value="1"/>
+							</div>
+							<button type="button" id="exchangeBtn" class="btn btn-primary" v-on:click="exchange(feedEntry)">実行</button>
+							<a href="#" id="download" class="btn btn-default" v-on:click="download(index)" v-bind:download="feedEntry.title + '.txt'">テキストにダウンロード</a>
+						</form>
+					</div>
+				</nav>
+
+				<div class="media" v-for="entry in feedEntry.entries">
+					<div class="media-body">
+						<h4 class="media-heading" v-on:click="connect(entry.link)">{{entry.title}}</h4>
+						<div v-html="entry.description"></div>
+					</div>
+					<hr/>
+				</div>
+			</div>
+		</div>
+	</div>
+
+</div>
+<script src="/js/jquery-3.2.1.min.js"></script>
+<script src="/js/bootstrap.min.js"></script>
+<script src="/js/vue.min.js"></script>
+<script>
+	var feed = new Vue({
+		el: '#feedList',
+		data: {
+			list: new Array()
+		},
+		methods: {
+			connect: function(url) {
+				window.open(url, '_blank')
+			},
+			selectAct: function(type) {
+				$('#actionType').val(type)
+				if (type == 1) {
+					$('#to-be-word').val(null)
+					$('#to-be-word').hide()
+					$('#actionBtn > span').first().text('取り除き')
+				} else {
+					$('#to-be-word').show()
+					$('#actionBtn > span').first().text('変換')
+				}
+			},
+			exchange: function(feedEntry) {
+				let type = Number($('#actionType').val())
+				let searchStr = $('#as-is-word').val()
+				let targetStr = (type == 2) ? $('#to-be-word').val() : ''
+				feedEntry['entries'] = feedEntry['entries'].map(function (entry) {
+					entry.title = exchangeWord(entry.title, searchStr, targetStr)
+					entry.description = exchangeWord(entry.description, searchStr, targetStr)
+					return entry
+				}, new Array())
+			},
+			download: function(index) {
+				let str = $('div#entry' + index + ' div.media').get().map(function (item) {
+					item = $(item).text()
+					return item
+				}).join('\n\n')
+				$('#download').attr('href', 'data:application/text;charset=utf-8,' + encodeURIComponent(str))
+			}
+		}
+	})
+
+	/* Ajaxを通じて、RSSフィードバックをリクエスト */
+	function executeReadFeed(uri) {
+		$.get('/read', {uri: uri}).then(
+			function (data) {
+				console.log(data)
+				if (data.success) {
+					feed.list.unshift(data.feed)
+					$('#feedAddress').val(null)
+					setTimeout(function () {
+						$('li[role=presentation]').removeClass('active')
+						$('li[role=presentation]').first().addClass('active')
+						$('.tab-pane').removeClass('active')
+						$('.tab-pane').first().addClass('active')
+					}, 500)
+				} else {
+					alert('エラーが発生しました。' + '\n' + 'Message : ' + data.error)
+				}
+			}
+		)
+	}
+
+	/* 文字を取り除く、または他の文字に変換 */
+	function exchangeWord(str, searchStr, targetStr) {
+		return str.split(searchStr).join(targetStr)
+	}
+
+	$('#feedForm').on('submit', function (e) {
+		e.preventDefault()
+		executeReadFeed($('#feedAddress').val())
+	})
+
+	/* Test Initialize */
+	$('#feedAddress').val('http://tech.uzabase.com/rss')
+	$('#feedForm').trigger('submit')
+</script>
+</body>
+</html>
