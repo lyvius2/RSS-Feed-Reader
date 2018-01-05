@@ -10,6 +10,7 @@ import java.util.Date;
 @RequiredArgsConstructor
 public class Entry {
 	private String title;
+	private String category;
 	private String description;
 	private String uri;
 	private String link;
@@ -17,6 +18,7 @@ public class Entry {
 
 	public Entry(SyndEntry syndEntry) {
 		this.title = syndEntry.getTitle();
+		this.category = syndEntry.getCategories().size() > 0 ? syndEntry.getCategories().get(0).getName():"";
 		this.description = syndEntry.getDescription().getValue();
 		this.uri = syndEntry.getUri();
 		this.link = syndEntry.getLink();

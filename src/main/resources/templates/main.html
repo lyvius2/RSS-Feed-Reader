@@ -66,7 +66,7 @@
 
 				<div class="media" v-for="entry in feedEntry.entries">
 					<div class="media-body">
-						<h4 class="media-heading" v-on:click="connect(entry.link)">{{entry.title}}</h4>
+						<h4 class="media-heading" v-on:click="connect(entry.link)" style="cursor:pointer;">{{entry.title}}</h4>
 						<div v-html="entry.description"></div>
 					</div>
 					<hr/>
@@ -150,10 +150,6 @@
 		e.preventDefault()
 		executeReadFeed($('#feedAddress').val())
 	})
-
-	/* Test Initialize */
-	$('#feedAddress').val('http://tech.uzabase.com/rss')
-	$('#feedForm').trigger('submit')
 </script>
 </body>
 </html>
